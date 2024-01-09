@@ -22,8 +22,15 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  LatLng? selectedLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +39,26 @@ class HomePage extends StatelessWidget {
         title: const Text('Inicio'),
       ),
       body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const MapSample()),
-            );
-          },
-          child: const Text('Ir al Mapa'),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (selectedLocation != null)
+              Text(
+                  'Ubicación Seleccionada: ${selectedLocation!.latitude}, ${selectedLocation!.longitude}'),
+            ElevatedButton(
+              onPressed: () async {
+                final result = await Navigator.of(context).push<LatLng>(
+                  MaterialPageRoute(builder: (context) => const MapSample()),
+                );
+                if (result != null) {
+                  setState(() {
+                    selectedLocation = result;
+                  });
+                }
+              },
+              child: const Text('Ir al Mapa'),
+            ),
+          ],
         ),
       ),
     );
@@ -55,38 +75,52 @@ class MapSample extends StatefulWidget {
 class MapSampleState extends State<MapSample> {
   final Completer<GoogleMapController> _controller =
       Completer<GoogleMapController>();
+  Set<Marker> _markers = {};
+  LatLng? selectedLocation;
 
   static const CameraPosition _kGooglePlex = CameraPosition(
-    target: LatLng(37.42796133580664, -122.085749655962),
+    target: LatLng(-12.04967738829701, -77.09668506723912),
     zoom: 14.4746,
   );
 
-  static const CameraPosition _kLake = CameraPosition(
-      bearing: 192.8334901395799,
-      target: LatLng(37.43296265331129, -122.08832357078792),
-      tilt: 59.440717697143555,
-      zoom: 19.151926040649414);
+  void _handleTap(LatLng latLng) {
+    setState(() {
+      selectedLocation = latLng;
+      _markers.clear();
+      _markers.add(Marker(
+        markerId: MarkerId(latLng.toString()),
+        position: latLng,
+        infoWindow: InfoWindow(
+            title: 'Ubicación Seleccionada',
+            snippet: '${latLng.latitude}, ${latLng.longitude}'),
+            
+      ));
+      Navigator.of(context).pop(latLng);
+    });
+    
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mapa'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop(selectedLocation);
+          },
+        ),
+      ),
       body: GoogleMap(
         mapType: MapType.hybrid,
         initialCameraPosition: _kGooglePlex,
+        onTap: _handleTap,
+        markers: _markers,
         onMapCreated: (GoogleMapController controller) {
           _controller.complete(controller);
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _goToTheLake,
-        label: const Text('To the lake!'),
-        icon: const Icon(Icons.directions_boat),
-      ),
     );
-  }
-
-  Future<void> _goToTheLake() async {
-    final GoogleMapController controller = await _controller.future;
-    await controller.animateCamera(CameraUpdate.newCameraPosition(_kLake));
   }
 }
