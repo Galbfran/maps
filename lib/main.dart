@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -75,7 +76,9 @@ class MapSample extends StatefulWidget {
 class MapSampleState extends State<MapSample> {
   final Completer<GoogleMapController> _controller =
       Completer<GoogleMapController>();
+  final TextEditingController _searchController = TextEditingController();
   Set<Marker> _markers = {};
+  List<dynamic> searchResults = [];
   LatLng? selectedLocation;
 
   static const CameraPosition _kGooglePlex = CameraPosition(
@@ -83,21 +86,77 @@ class MapSampleState extends State<MapSample> {
     zoom: 14.4746,
   );
 
-  void _handleTap(LatLng latLng) {
-    setState(() {
-      selectedLocation = latLng;
-      _markers.clear();
-      _markers.add(Marker(
-        markerId: MarkerId(latLng.toString()),
-        position: latLng,
-        infoWindow: InfoWindow(
-            title: 'Ubicación Seleccionada',
-            snippet: '${latLng.latitude}, ${latLng.longitude}'),
-      ));
-    });
+  Future<void> _searchAndNavigate(String address) async {
+    try {
+      var response = await Dio().get(
+        'https://maps.googleapis.com/maps/api/geocode/json',
+        queryParameters: {
+          'address': address,
+          'key':
+              'AIzaSyAA6KXYXkm6KJ84V1apLQguQKXBoKx0NtE', // Reemplaza con tu API Key
+        },
+      );
+      print(response);
+      if (response.statusCode == 200 && response.data['results'].length > 0) {
+        setState(() {
+          searchResults = response.data['results'];
+        });
+        _showSearchResults();
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
 
-    // Regresar automáticamente a HomePage con la ubicación seleccionada
-    Navigator.of(context).pop(latLng);
+  void _showSearchResults() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Seleccione una Ubicación"),
+          content: Container(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: searchResults.length,
+              itemBuilder: (BuildContext context, int index) {
+                return ListTile(
+                  title: Text(searchResults[index]['formatted_address']),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    double lat =
+                        searchResults[index]['geometry']['location']['lat'];
+                    double lng =
+                        searchResults[index]['geometry']['location']['lng'];
+                    LatLng location = LatLng(lat, lng);
+                    _updateMapLocation(location);
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _updateMapLocation(LatLng location) {
+    setState(() {
+      selectedLocation = location;
+      _markers.clear();
+      _markers.add(
+        Marker(
+          markerId: MarkerId(location.toString()),
+          position: location,
+          infoWindow: InfoWindow(
+            title: 'Ubicación Seleccionada',
+            snippet: '${location.latitude}, ${location.longitude}',
+          ),
+        ),
+      );
+    });
+    _controller.future.then((controller) =>
+        controller.animateCamera(CameraUpdate.newLatLng(location)));
   }
 
   @override
@@ -105,21 +164,31 @@ class MapSampleState extends State<MapSample> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mapa'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).pop(selectedLocation);
-          },
-        ),
       ),
-      body: GoogleMap(
-        mapType: MapType.hybrid,
-        initialCameraPosition: _kGooglePlex,
-        onTap: _handleTap,
-        markers: _markers,
-        onMapCreated: (GoogleMapController controller) {
-          _controller.complete(controller);
-        },
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Ingrese una dirección',
+                suffixIcon: IconButton(
+                  icon: Icon(Icons.search),
+                  onPressed: () => _searchAndNavigate(_searchController.text),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GoogleMap(
+              mapType: MapType.normal,
+              initialCameraPosition: _kGooglePlex,
+              markers: _markers,
+              onMapCreated: (controller) => _controller.complete(controller),
+            ),
+          ),
+        ],
       ),
     );
   }
