@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -75,6 +77,7 @@ class MapSample extends StatefulWidget {
 class MapSampleState extends State<MapSample> {
   final Completer<GoogleMapController> _controller =
       Completer<GoogleMapController>();
+  final TextEditingController _searchController = TextEditingController();
   Set<Marker> _markers = {};
   LatLng? selectedLocation;
 
@@ -82,6 +85,25 @@ class MapSampleState extends State<MapSample> {
     target: LatLng(-12.04967738829701, -77.09668506723912),
     zoom: 14.4746,
   );
+
+  Future<void> _searchAndNavigate() async {
+    String address = _searchController.text;
+    var response = await http.get(Uri.parse(
+        'https://maps.googleapis.com/maps/api/geocode/json?address=$address&key=AIzaSyAA6KXYXkm6KJ84V1apLQguQKXBoKx0NtE'));
+
+    if (response.statusCode == 200) {
+      var result = jsonDecode(response.body);
+      if (result['results'].length > 0) {
+        double lat = result['results'][0]['geometry']['location']['lat'];
+        double lng = result['results'][0]['geometry']['location']['lng'];
+        LatLng searchedLocation = LatLng(lat, lng);
+
+        _handleTap(searchedLocation);
+        final GoogleMapController controller = await _controller.future;
+        controller.animateCamera(CameraUpdate.newLatLng(searchedLocation));
+      }
+    }
+  }
 
   void _handleTap(LatLng latLng) {
     setState(() {
@@ -112,14 +134,33 @@ class MapSampleState extends State<MapSample> {
           },
         ),
       ),
-      body: GoogleMap(
-        mapType: MapType.hybrid,
-        initialCameraPosition: _kGooglePlex,
-        onTap: _handleTap,
-        markers: _markers,
-        onMapCreated: (GoogleMapController controller) {
-          _controller.complete(controller);
-        },
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Ingresa una dirección',
+                suffixIcon: IconButton(
+                  icon: Icon(Icons.search),
+                  onPressed: _searchAndNavigate,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GoogleMap(
+              mapType: MapType.hybrid,
+              initialCameraPosition: _kGooglePlex,
+              onTap: _handleTap,
+              markers: _markers,
+              onMapCreated: (GoogleMapController controller) {
+                _controller.complete(controller);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
