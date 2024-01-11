@@ -188,6 +188,15 @@ class MapSampleState extends State<MapSample> {
               onMapCreated: (controller) => _controller.complete(controller),
             ),
           ),
+          ElevatedButton(
+            onPressed: selectedLocation != null
+                ? () {
+                    Navigator.of(context).pop(
+                        selectedLocation); // Retorna la ubicación seleccionada
+                  }
+                : null,
+            child: Text('Confirmar Ubicación'),
+          )
         ],
       ),
     );
