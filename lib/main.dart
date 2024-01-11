@@ -92,8 +92,8 @@ class MapSampleState extends State<MapSample> {
         'https://maps.googleapis.com/maps/api/geocode/json',
         queryParameters: {
           'address': address,
-          'key':
-              'AIzaSyAA6KXYXkm6KJ84V1apLQguQKXBoKx0NtE', // Reemplaza con tu API Key
+          'components': 'locality:Lima|country:PE',
+          'key': 'AIzaSyAA6KXYXkm6KJ84V1apLQguQKXBoKx0NtE',
         },
       );
       print(response);
