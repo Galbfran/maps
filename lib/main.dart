@@ -31,7 +31,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  LatLng? selectedLocation;
+  String? selectedLocation;
   String? selectedAddress;
 
   @override
@@ -45,14 +45,14 @@ class _HomePageState extends State<HomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (selectedLocation != null)
-              Text(
-                  'Ubicación Seleccionada: ${selectedLocation!.latitude}, ${selectedLocation!.longitude},${selectedAddress}'),
+              Text('Ubicación Seleccionada: $selectedLocation'),
             ElevatedButton(
               onPressed: () async {
-                final result = await Navigator.of(context).push<LatLng>(
+                final result = await Navigator.of(context).push<String>(
                   MaterialPageRoute(builder: (context) => const MapSample()),
                 );
                 if (result != null) {
+                  print(result);
                   setState(() {
                     selectedLocation = result;
                   });
@@ -80,7 +80,7 @@ class MapSampleState extends State<MapSample> {
   final TextEditingController _searchController = TextEditingController();
   Set<Marker> _markers = {};
   List<dynamic> searchResults = [];
-  LatLng? selectedLocation;
+  String? selectedLocation;
   String? selectedAddress;
 
   static const CameraPosition _kGooglePlex = CameraPosition(
@@ -144,9 +144,9 @@ class MapSampleState extends State<MapSample> {
   }
 
   void _updateMapLocation(LatLng location, String address_name) {
-    print(address_name);
     setState(() {
-      selectedLocation = location;
+      selectedLocation =
+          '${location.latitude}, ${location.longitude} , ${address_name}';
       selectedAddress = address_name;
 
       _markers.clear();
