@@ -32,6 +32,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   LatLng? selectedLocation;
+  String? selectedAddress;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +46,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             if (selectedLocation != null)
               Text(
-                  'Ubicación Seleccionada: ${selectedLocation!.latitude}, ${selectedLocation!.longitude}'),
+                  'Ubicación Seleccionada: ${selectedLocation!.latitude}, ${selectedLocation!.longitude},${selectedAddress}'),
             ElevatedButton(
               onPressed: () async {
                 final result = await Navigator.of(context).push<LatLng>(
@@ -80,6 +81,7 @@ class MapSampleState extends State<MapSample> {
   Set<Marker> _markers = {};
   List<dynamic> searchResults = [];
   LatLng? selectedLocation;
+  String? selectedAddress;
 
   static const CameraPosition _kGooglePlex = CameraPosition(
     target: LatLng(-12.04967738829701, -77.09668506723912),
@@ -96,7 +98,6 @@ class MapSampleState extends State<MapSample> {
           'key': 'AIzaSyAA6KXYXkm6KJ84V1apLQguQKXBoKx0NtE',
         },
       );
-      print(response);
       if (response.statusCode == 200 && response.data['results'].length > 0) {
         setState(() {
           searchResults = response.data['results'];
@@ -128,8 +129,10 @@ class MapSampleState extends State<MapSample> {
                         searchResults[index]['geometry']['location']['lat'];
                     double lng =
                         searchResults[index]['geometry']['location']['lng'];
+                    String address_name =
+                        searchResults[index]['formatted_address'];
                     LatLng location = LatLng(lat, lng);
-                    _updateMapLocation(location);
+                    _updateMapLocation(location, address_name);
                   },
                 );
               },
@@ -140,9 +143,12 @@ class MapSampleState extends State<MapSample> {
     );
   }
 
-  void _updateMapLocation(LatLng location) {
+  void _updateMapLocation(LatLng location, String address_name) {
+    print(address_name);
     setState(() {
       selectedLocation = location;
+      selectedAddress = address_name;
+
       _markers.clear();
       _markers.add(
         Marker(
@@ -150,7 +156,8 @@ class MapSampleState extends State<MapSample> {
           position: location,
           infoWindow: InfoWindow(
             title: 'Ubicación Seleccionada',
-            snippet: '${location.latitude}, ${location.longitude}',
+            snippet:
+                '${location.latitude}, ${location.longitude} , ${address_name}',
           ),
         ),
       );
